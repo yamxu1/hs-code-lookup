@@ -1,0 +1,1549 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>美国 HS Code 查询工具</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+    background: #f0f2f5;
+    min-height: 100vh;
+    padding: 40px 20px;
+  }
+  .container {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  h1 {
+    text-align: center;
+    color: #1a1a2e;
+    font-size: 28px;
+    margin-bottom: 8px;
+  }
+  .subtitle {
+    text-align: center;
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 32px;
+  }
+  .search-box {
+    position: relative;
+    margin-bottom: 24px;
+  }
+  .search-box input {
+    width: 100%;
+    padding: 16px 20px 16px 48px;
+    font-size: 16px;
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background: #fff;
+  }
+  .search-box input:focus {
+    border-color: #4361ee;
+    box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
+  }
+  .search-box .icon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 20px;
+    color: #999;
+  }
+  .search-box .clear-btn {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 18px;
+    color: #999;
+    cursor: pointer;
+    display: none;
+    background: none;
+    border: none;
+    padding: 4px 8px;
+  }
+  .search-box .clear-btn:hover { color: #333; }
+  .results {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    overflow: hidden;
+  }
+  .result-item {
+    padding: 20px 24px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .result-item:last-child { border-bottom: none; }
+  .result-item:hover { background: #f8f9ff; }
+  .result-item .product-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin-bottom: 6px;
+  }
+  .result-item .hs-code {
+    font-size: 20px;
+    font-weight: 700;
+    color: #4361ee;
+    font-family: "Consolas", "Monaco", monospace;
+    margin-bottom: 8px;
+  }
+  .result-item .hs-code .dot { color: #999; }
+  .result-item .desc {
+    font-size: 13px;
+    color: #666;
+    line-height: 1.6;
+  }
+  .result-item .duty {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 3px 10px;
+    background: #e8f5e9;
+    color: #2e7d32;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .result-item .duty.free {
+    background: #e3f2fd;
+    color: #1565c0;
+  }
+  .no-result {
+    padding: 40px 24px;
+    text-align: center;
+    color: #999;
+  }
+  .no-result .emoji { font-size: 40px; margin-bottom: 12px; }
+  .no-result p { font-size: 14px; line-height: 1.8; }
+  .no-result a { color: #4361ee; text-decoration: none; }
+  .no-result a:hover { text-decoration: underline; }
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    background: #f0f0f0;
+    color: #666;
+    border-radius: 4px;
+    font-size: 12px;
+    margin-right: 6px;
+  }
+  .hot-keys {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 24px;
+    justify-content: center;
+  }
+  .hot-key {
+    padding: 6px 14px;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 20px;
+    font-size: 13px;
+    color: #555;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .hot-key:hover {
+    background: #4361ee;
+    color: #fff;
+    border-color: #4361ee;
+  }
+  .detail-modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+  }
+  .detail-modal.active { display: flex; }
+  .detail-content {
+    background: #fff;
+    border-radius: 16px;
+    max-width: 600px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: 32px;
+    position: relative;
+  }
+  .detail-content .close-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    font-size: 24px;
+    color: #999;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 4px 8px;
+  }
+  .detail-content .close-btn:hover { color: #333; }
+  .detail-content h2 {
+    font-size: 22px;
+    color: #1a1a2e;
+    margin-bottom: 4px;
+  }
+  .detail-content .code-big {
+    font-size: 28px;
+    font-weight: 700;
+    color: #4361ee;
+    font-family: "Consolas", monospace;
+    margin: 12px 0;
+  }
+  .detail-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+  }
+  .detail-content th, .detail-content td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 14px;
+  }
+  .detail-content th {
+    color: #888;
+    font-weight: 500;
+    width: 120px;
+  }
+  .detail-content td { color: #333; }
+  .detail-content .note {
+    margin-top: 16px;
+    padding: 12px 16px;
+    background: #fff8e1;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #795548;
+    line-height: 1.6;
+  }
+  .footer {
+    text-align: center;
+    margin-top: 32px;
+    font-size: 12px;
+    color: #999;
+  }
+  .footer a { color: #4361ee; text-decoration: none; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>🔍 美国 HS Code 查询</h1>
+  <p class="subtitle">输入中文品名，快速匹配美国 HTS 海关编码（仅供参考，以官方为准）</p>
+
+  <div class="search-box">
+    <span class="icon">🔎</span>
+    <input type="text" id="searchInput" placeholder="输入中文品名，如：手机壳、数据线、蓝牙耳机..." autocomplete="off">
+    <button class="clear-btn" id="clearBtn" onclick="clearSearch()">✕</button>
+  </div>
+
+  <div class="hot-keys" id="hotKeys">
+    <span class="hot-key" onclick="quickSearch('手机壳')">手机壳</span>
+    <span class="hot-key" onclick="quickSearch('数据线')">数据线</span>
+    <span class="hot-key" onclick="quickSearch('蓝牙耳机')">蓝牙耳机</span>
+    <span class="hot-key" onclick="quickSearch('充电宝')">充电宝</span>
+    <span class="hot-key" onclick="quickSearch('手机膜')">手机膜</span>
+    <span class="hot-key" onclick="quickSearch('键盘')">键盘</span>
+    <span class="hot-key" onclick="quickSearch('鼠标')">鼠标</span>
+    <span class="hot-key" onclick="quickSearch('T恤')">T恤</span>
+    <span class="hot-key" onclick="quickSearch('运动鞋')">运动鞋</span>
+    <span class="hot-key" onclick="quickSearch('背包')">背包</span>
+    <span class="hot-key" onclick="quickSearch('保温杯')">保温杯</span>
+    <span class="hot-key" onclick="quickSearch('毛巾')">毛巾</span>
+    <span class="hot-key" onclick="quickSearch('洗发水')">洗发水</span>
+    <span class="hot-key" onclick="quickSearch('玩具')">玩具</span>
+    <span class="hot-key" onclick="quickSearch('办公椅')">办公椅</span>
+    <span class="hot-key" onclick="quickSearch('口罩')">口罩</span>
+    <span class="hot-key" onclick="quickSearch('行李箱')">行李箱</span>
+    <span class="hot-key" onclick="quickSearch('U盘')">U盘</span>
+    <span class="hot-key" onclick="quickSearch('宠物食品')">宠物食品</span>
+    <span class="hot-key" onclick="quickSearch('纸箱')">纸箱</span>
+  </div>
+
+  <div class="results" id="results"></div>
+
+  <div class="footer">
+    数据来源：<a href="https://hts.usitc.gov/" target="_blank">hts.usitc.gov</a>（美国国际贸易委员会）<br>
+    本工具仅供参考，实际归类以海关裁定为准
+  </div>
+</div>
+
+<!-- 详情弹窗 -->
+<div class="detail-modal" id="detailModal" onclick="closeModal(event)">
+  <div class="detail-content" id="detailContent"></div>
+</div>
+
+<script>
+// 品名数据库：中文品名 → HS Code 映射
+const products = [
+  // ===== 手机配件类 =====
+  {
+    name: "手机壳",
+    aliases: ["手机保护壳", "手机套", "手机背壳", "phone case"],
+    hsCode: "3926.90.99.89",
+    parentCode: "3926.90.99",
+    desc: "塑料/TPU/硅胶材质手机壳，归入其他塑料制品",
+    descEn: "Back-shell style smartphone cases of plastics",
+    dutyGeneral: "5.3%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "80%",
+    unit: "No. and kg",
+    chapter: "39 - 塑料及其制品",
+    note: "如为皮革材质归入4202，纺织材质归入其他品目。HTS条目9902.12.09明确确认硬塑料智能手机壳归入3926.90.99。"
+  },
+  {
+    name: "手机膜",
+    aliases: ["屏幕保护膜", "钢化膜", "手机贴膜", "screen protector"],
+    hsCode: "3926.90.99.89",
+    parentCode: "3926.90.99",
+    desc: "塑料材质屏幕保护膜",
+    descEn: "Plastic screen protector film",
+    dutyGeneral: "5.3%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "80%",
+    unit: "No. and kg",
+    chapter: "39 - 塑料及其制品",
+    note: "玻璃材质屏幕保护膜归入7006.00.00（钢化玻璃制品）或7005（浮法玻璃）。"
+  },
+  {
+    name: "手机支架",
+    aliases: ["手机座", "手机架", "phone stand", "phone holder"],
+    hsCode: "3926.90.99.89",
+    parentCode: "3926.90.99",
+    desc: "塑料材质手机支架",
+    descEn: "Plastic phone stand/holder",
+    dutyGeneral: "5.3%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "80%",
+    unit: "No. and kg",
+    chapter: "39 - 塑料及其制品",
+    note: "金属材质手机支架归入8305.90（其他贱金属配件）或7326.90（其他钢铁制品）。"
+  },
+  {
+    name: "数据线",
+    aliases: ["充电线", "USB线", "USB cable", "charging cable"],
+    hsCode: "8544.42.20.00",
+    parentCode: "8544.42.20",
+    desc: "有接头、用于电压≤1000V的电缆/电线",
+    descEn: "Electric conductors, fitted with connectors, for a voltage ≤ 1000V",
+    dutyGeneral: "2.6%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "85 - 电机、电气设备及其零件",
+    note: "带充电功能的线缆归入8544项下，根据接头类型和电压等级可能细分到不同子目。"
+  },
+  {
+    name: "充电宝",
+    aliases: ["移动电源", "便携充电器", "power bank", "portable charger"],
+    hsCode: "8507.60.00.00",
+    parentCode: "8507.60.00",
+    desc: "锂离子蓄电池（可充电）",
+    descEn: "Lithium-ion accumulators (rechargeable batteries)",
+    dutyGeneral: "3.4%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "85 - 电机、电气设备及其零件",
+    note: "充电宝核心部件为锂电池，按蓄电池归类。需注意航空运输有特殊规定。"
+  },
+  {
+    name: "蓝牙耳机",
+    aliases: ["无线耳机", "TWS耳机", "earbuds", "wireless earphones", "bluetooth headset"],
+    hsCode: "8518.30.20.00",
+    parentCode: "8518.30.20",
+    desc: "耳机、耳塞机，不论是否装有传声器",
+    descEn: "Headphones and earphones, whether or not combined with microphone",
+    dutyGeneral: "3.9%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "4.5%",
+    unit: "No. and kg",
+    chapter: "85 - 电机、电气设备及其零件",
+    note: "蓝牙耳机按耳机归类，不论是否集成麦克风功能。"
+  },
+  {
+    name: "蓝牙音箱",
+    aliases: ["便携音箱", "无线音箱", "bluetooth speaker", "portable speaker"],
+    hsCode: "8518.22.00.00",
+    parentCode: "8518.22.00",
+    desc: "单喇叭音箱（单一扬声器，装于单箱体）",
+    descEn: "Single loudspeaker mounted in a single enclosure",
+    dutyGeneral: "4.9%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "4.5%",
+    unit: "No. and kg",
+    chapter: "85 - 电机、电气设备及其零件",
+    note: "多喇叭音箱系统归入8518.29。"
+  },
+  {
+    name: "键盘",
+    aliases: ["电脑键盘", "机械键盘", "keyboard"],
+    hsCode: "8471.60.10.00",
+    parentCode: "8471.60.10",
+    desc: "键盘（自动数据处理设备的输入部件）",
+    descEn: "Keyboard (input unit for ADP)",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "84 - 核反应堆、锅炉、机器、机械器具及其零件",
+    note: "电脑键盘归入8471.60.10，一般税率为Free。"
+  },
+  {
+    name: "鼠标",
+    aliases: ["电脑鼠标", "无线鼠标", "mouse"],
+    hsCode: "8471.60.70.00",
+    parentCode: "8471.60.70",
+    desc: "鼠标（自动数据处理设备的输入部件）",
+    descEn: "Mouse (input unit for ADP)",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "84 - 核反应堆、锅炉、机器、机械器具及其零件",
+    note: "电脑鼠标归入8471.60.70，一般税率为Free。"
+  },
+  {
+    name: "手机充电器",
+    aliases: ["充电头", "电源适配器", "wall charger", "power adapter"],
+    hsCode: "8504.40.95.00",
+    parentCode: "8504.40.95",
+    desc: "其他静止变流器（包括充电器）",
+    descEn: "Other static converters (including chargers)",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "85 - 电机、电气设备及其零件",
+    note: "手机充电器（AC-DC转换器）归入8504.40.95，一般税率为Free。"
+  },
+  // ===== 服装类 =====
+  {
+    name: "T恤",
+    aliases: ["T恤衫", "短袖T恤", "t-shirt"],
+    hsCode: "6109.10.00.00",
+    parentCode: "6109.10.00",
+    desc: "棉制针织或钩编的T恤衫及其他内衣",
+    descEn: "T-shirts, singlets and other vests, of cotton, knitted or crocheted",
+    dutyGeneral: "16.5%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "32%",
+    unit: "No. and kg",
+    chapter: "61 - 针织或钩编的服装及衣着附件",
+    note: "按材质（棉/化纤/毛等）和织法（针织/梭织）不同，归类会有差异。化纤T恤归入6109.90。"
+  },
+  {
+    name: "牛仔裤",
+    aliases: ["牛仔长裤", "jeans", "denim pants"],
+    hsCode: "6203.42.40.00",
+    parentCode: "6203.42.40",
+    desc: "棉制男式长裤（含牛仔布）",
+    descEn: "Men's or boys' trousers, of cotton, containing 60% or more by weight of cotton",
+    dutyGeneral: "16.6%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "32%",
+    unit: "No. and kg",
+    chapter: "62 - 非针织或非钩编的服装及衣着附件",
+    note: "女式牛仔裤归入6204.62。按性别、材质、织法不同归类有差异。"
+  },
+  {
+    name: "连衣裙",
+    aliases: ["裙子", "dress"],
+    hsCode: "6204.43.40.00",
+    parentCode: "6204.43.40",
+    desc: "合成纤维制女式连衣裙（梭织）",
+    descEn: "Women's or girls' dresses, of synthetic fibres, not knitted or crocheted",
+    dutyGeneral: "16%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "32%",
+    unit: "No. and kg",
+    chapter: "62 - 非针织或非钩编的服装及衣着附件",
+    note: "针织连衣裙归入6104，棉质连衣裙归入6204.42。按材质和织法细分。"
+  },
+  {
+    name: "外套",
+    aliases: ["夹克", "上衣", "jacket", "coat"],
+    hsCode: "6201.93.20.00",
+    parentCode: "6201.93.20",
+    desc: "合成纤维制男式防风衣等（梭织）",
+    descEn: "Men's or boys' anoraks, windbreakers and similar articles, of man-made fibres",
+    dutyGeneral: "7.1%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "32%",
+    unit: "No. and kg",
+    chapter: "62 - 非针织或非钩编的服装及衣着附件",
+    note: "服装归类复杂，需根据性别、材质（棉/化纤/毛）、织法（针织/梭织）、款式等确定。"
+  },
+  // ===== 家居用品类 =====
+  {
+    name: "保温杯",
+    aliases: ["保温瓶", "thermos", "vacuum flask"],
+    hsCode: "9617.00.00.00",
+    parentCode: "9617.00.00",
+    desc: "真空保温容器及其他真空器具",
+    descEn: "Vacuum flasks and other vacuum vessels",
+    dutyGeneral: "3.4%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "96 - 杂项制品",
+    note: "非真空保温杯（如普通不锈钢杯）归入7323.93（不锈钢餐桌厨房用品）。"
+  },
+  {
+    name: "抱枕",
+    aliases: ["靠垫", "cushion", "throw pillow"],
+    hsCode: "9404.90.20.00",
+    parentCode: "9404.90.20",
+    desc: "带弹簧的座垫或填充的寝具及类似品",
+    descEn: "Cushions and similar articles",
+    dutyGeneral: "5.8%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "94 - 家具、寝具、褥垫等",
+    note: "按填充物和面料材质不同，可能归入不同子目。"
+  },
+  // ===== 玩具类 =====
+  {
+    name: "玩具",
+    aliases: ["儿童玩具", "毛绒玩具", "toy"],
+    hsCode: "9503.00.00.00",
+    parentCode: "9503.00.00",
+    desc: "三轮车、踏板车及其他玩具",
+    descEn: "Tricycles, scooters, dolls, other toys",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "95 - 玩具、游戏品、运动用品",
+    note: "大部分玩具美国进口关税为Free。需根据具体玩具类型确认。"
+  },
+  // ===== 化妆品类 =====
+  {
+    name: "口红",
+    aliases: ["唇膏", "lipstick"],
+    hsCode: "3304.10.00.00",
+    parentCode: "3304.10.00",
+    desc: "唇部化妆品",
+    descEn: "Lip make-up preparations",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "20%",
+    unit: "No. and kg",
+    chapter: "33 - 精油及香膏；芳香料制品及化妆盥洗品",
+    note: "唇部化妆品一般税率为Free。"
+  },
+  {
+    name: "面膜",
+    aliases: ["面膜贴", "face mask", "sheet mask"],
+    hsCode: "3304.99.50.00",
+    parentCode: "3304.99.50",
+    desc: "其他美容或化妆品及护肤品",
+    descEn: "Other beauty or make-up preparations and skin-care products",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "20%",
+    unit: "No. and kg",
+    chapter: "33 - 精油及香膏；芳香料制品及化妆盥洗品",
+    note: "护肤品一般税率为Free。"
+  },
+  // ===== 更多电子类 =====
+  {
+    name: "智能手表",
+    aliases: ["smart watch", "手表"],
+    hsCode: "9102.11.00.00",
+    parentCode: "9102.11.00",
+    desc: "仅有机械指示器的手表，电池驱动",
+    descEn: "Wrist watches, battery powered, with only mechanical display",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "91 - 钟表及其零件",
+    note: "智能手表归类有争议，可能归入9102（手表）或8517（通信设备），需根据主要功能确定。"
+  },
+  {
+    name: "平板电脑",
+    aliases: ["iPad", "tablet"],
+    hsCode: "8471.30.01.00",
+    parentCode: "8471.30.01",
+    desc: "便携式自动数据处理设备（重量≤10kg）",
+    descEn: "Portable digital automatic data processing machines, ≤ 10 kg",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "84 - 核反应堆、锅炉、机器、机械器具及其零件",
+    note: "平板电脑归入便携式电脑类别，一般税率为Free。"
+  },
+  {
+    name: "手机",
+    aliases: ["智能手机", "mobile phone", "smartphone"],
+    hsCode: "8517.13.00.00",
+    parentCode: "8517.13.00",
+    desc: "智能手机",
+    descEn: "Smartphones",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "85 - 电机、电气设备及其零件",
+    note: "智能手机一般税率为Free。注意：部分情况下可能受关税附加措施影响。"
+  },
+  {
+    name: "LED灯",
+    aliases: ["LED灯泡", "LED灯", "LED light"],
+    hsCode: "8539.50.00.00",
+    parentCode: "8539.50.00",
+    desc: "发光二极管（LED）灯泡（灯管）",
+    descEn: "Light-emitting diode (LED) lamps",
+    dutyGeneral: "3.5%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "85 - 电机、电气设备及其零件",
+    note: "LED灯具（含灯座/灯罩）可能归入9405（灯具及照明装置）。"
+  },
+  {
+    name: "背包",
+    aliases: ["双肩包", "backpack", "school bag"],
+    hsCode: "4202.92.30.00",
+    parentCode: "4202.92.30",
+    desc: "纺织材料制旅行包、运动包等（外表面为纺织材料）",
+    descEn: "Travel bags, sports bags with outer surface of textile materials",
+    dutyGeneral: "17.6%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "42 - 皮革制品；旅行用品、手提包",
+    note: "背包归类取决于外表面材质：塑料归入4202.92.17，皮革归入4202.11。"
+  },
+  {
+    name: "太阳镜",
+    aliases: ["墨镜", "sunglasses"],
+    hsCode: "9004.10.00.00",
+    parentCode: "9004.10.00",
+    desc: "太阳镜",
+    descEn: "Sunglasses",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "20%",
+    unit: "No. and kg",
+    chapter: "90 - 光学、照相、电影、精密仪器及器具",
+    note: "太阳镜一般税率为Free。"
+  },
+  // ===== 厨房用品类 =====
+  {
+    name: "不锈钢餐具",
+    aliases: ["刀叉勺", "餐具套装", "stainless steel cutlery", "flatware"],
+    hsCode: "8215.20.00.00",
+    parentCode: "8215.20.00",
+    desc: "其他成套或配套的餐具（含镀贵金属）",
+    descEn: "Other sets, assorted, of tableware, kitchenware of base metal",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "82 - 贱金属工具、器具、利口器、餐匙、餐叉及其零件",
+    note: "不锈钢制餐匙、餐叉、勺等归入8215项下，一般税率为Free。"
+  },
+  {
+    name: "塑料餐具",
+    aliases: ["塑料碗", "塑料盘", "plastic tableware"],
+    hsCode: "3924.10.40.00",
+    parentCode: "3924.10.40",
+    desc: "塑料制餐具（盘、碟、杯、碗等）",
+    descEn: "Tableware and kitchenware, of plastics",
+    dutyGeneral: "3.4%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "39 - 塑料及其制品",
+    note: "塑料制杯、碗、盘、碟等厨房及餐桌用品归入3924.10。"
+  },
+  {
+    name: "陶瓷杯",
+    aliases: ["马克杯", "陶瓷杯", "ceramic mug", "porcelain cup"],
+    hsCode: "6912.00.45.00",
+    parentCode: "6912.00.45",
+    desc: "其他陶瓷制餐具及厨房用品",
+    descEn: "Other ceramic tableware and kitchenware",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "69 - 陶瓷产品",
+    note: "瓷制餐具归入6911，陶制归入6912。一般税率为Free。"
+  },
+  {
+    name: "砧板",
+    aliases: ["菜板", "cutting board", "chopping board"],
+    hsCode: "4419.90.80.00",
+    parentCode: "4419.90.80",
+    desc: "其他木制餐厨具",
+    descEn: "Other articles of wood for table or kitchen use",
+    dutyGeneral: "3.2%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "44 - 木及木制品",
+    note: "木制砧板归入4419.90，竹制归入4419.90（竹视同木）。塑料砧板归入3924.10。"
+  },
+  {
+    name: "保鲜盒",
+    aliases: ["收纳盒", "food container", "storage box"],
+    hsCode: "3924.10.40.00",
+    parentCode: "3924.10.40",
+    desc: "塑料制厨房用品（含保鲜盒）",
+    descEn: "Tableware and kitchenware, of plastics",
+    dutyGeneral: "3.4%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "39 - 塑料及其制品",
+    note: "塑料保鲜盒归入3924.10，玻璃保鲜盒归入7013。"
+  },
+  // ===== 纺织品类 =====
+  {
+    name: "毛巾",
+    aliases: ["浴巾", "面巾", "towel", "bath towel"],
+    hsCode: "6302.60.00.00",
+    parentCode: "6302.60.00",
+    desc: "棉制盥洗用织物（毛巾类）",
+    descEn: "Toilet linen and kitchen linen, of terry towelling or similar terry fabrics, of cotton",
+    dutyGeneral: "10.4%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "63 - 其他纺织制成品",
+    note: "棉制毛巾归入6302.60，化纤毛巾归入6302.40。"
+  },
+  {
+    name: "床单",
+    aliases: ["床笠", "bed sheet", "bed linen"],
+    hsCode: "6302.31.00.00",
+    parentCode: "6302.31.00",
+    desc: "棉制其他寝具（床单等）",
+    descEn: "Other bed linen, of cotton, not knitted or crocheted",
+    dutyGeneral: "6.8%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "63 - 其他纺织制成品",
+    note: "针织床单归入6302.10，化纤床单归入6302.32。"
+  },
+  {
+    name: "窗帘",
+    aliases: ["窗纱", "curtain", "drape"],
+    hsCode: "6303.92.20.00",
+    parentCode: "6303.92.20",
+    desc: "合成纤维制其他窗帘（非针织）",
+    descEn: "Other curtains of synthetic fibres, not knitted or crocheted",
+    dutyGeneral: "5.8%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "63 - 其他纺织制成品",
+    note: "棉制窗帘归入6303.91，针织窗帘归入6303.19。"
+  },
+  // ===== 鞋靴类 =====
+  {
+    name: "运动鞋",
+    aliases: ["跑鞋", "球鞋", "sneakers", "running shoes", "sports shoes"],
+    hsCode: "6404.11.00",
+    parentCode: "6404.11",
+    desc: "运动鞋靴（外底为橡胶/塑料，鞋面为纺织材料）",
+    descEn: "Sports footwear with outer sole of rubber/plastics and upper of textile materials",
+    dutyGeneral: "10%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "37.5%",
+    unit: "No. and kg",
+    chapter: "64 - 鞋靴、护腿和类似品及其零件",
+    note: "鞋靴归类复杂，需根据鞋底材质、鞋面材质、用途等综合判定。皮革面运动鞋归入6403。"
+  },
+  {
+    name: "拖鞋",
+    aliases: ["slippers", "flip flops"],
+    hsCode: "6402.20.00",
+    parentCode: "6402.20",
+    desc: "用栓塞条带固定于鞋底的鞋靴（人字拖等）",
+    descEn: "Footwear with upper straps or thongs assembled to the sole by means of plugs",
+    dutyGeneral: "6%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "37.5%",
+    unit: "No. and kg",
+    chapter: "64 - 鞋靴、护腿和类似品及其零件",
+    note: "橡胶/塑料底拖鞋归入6402，纺织面拖鞋归入6404。"
+  },
+  // ===== 宠物用品类 =====
+  {
+    name: "宠物玩具",
+    aliases: ["狗玩具", "猫玩具", "pet toy"],
+    hsCode: "9508.90.00.00",
+    parentCode: "9508.90.00",
+    desc: "其他游乐场设备、桌上游戏用品",
+    descEn: "Other amusement park/tables games articles",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "95 - 玩具、游戏品、运动用品",
+    note: "宠物专用玩具归入9508。一般税率为Free。"
+  },
+  {
+    name: "宠物食品",
+    aliases: ["狗粮", "猫粮", "pet food", "dog food", "cat food"],
+    hsCode: "2309.10.00.00",
+    parentCode: "2309.10.00",
+    desc: "零售包装的狗食或猫食",
+    descEn: "Dog or cat food, put up for retail sale",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "23 - 食品工业的残渣及废料；配制的动物饲料",
+    note: "零售包装猫狗食品一般税率为Free。"
+  },
+  {
+    name: "宠物窝",
+    aliases: ["狗窝", "猫窝", "pet bed"],
+    hsCode: "9404.90.80.00",
+    parentCode: "9404.90.80",
+    desc: "其他寝具及类似用品（含宠物窝）",
+    descEn: "Other articles of bedding and similar furnishing",
+    dutyGeneral: "5.8%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "94 - 家具、寝具、褥垫等",
+    note: "填充式宠物窝归入9404.90。"
+  },
+  // ===== 运动户外类 =====
+  {
+    name: "瑜伽垫",
+    aliases: ["瑜伽垫", "exercise mat", "yoga mat"],
+    hsCode: "9506.91.00.00",
+    parentCode: "9506.91.00",
+    desc: "一般体育活动、体操、竞技运动及其他运动用品",
+    descEn: "Articles for general physical exercise, gymnastics, athletics, other sports",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "95 - 玩具、游戏品、运动用品",
+    note: "运动器材一般税率为Free。"
+  },
+  {
+    name: "自行车",
+    aliases: ["脚踏车", "bicycle", "bike"],
+    hsCode: "8712.00.15.00",
+    parentCode: "8712.00.15",
+    desc: "其他自行车（非机动）",
+    descEn: "Other bicycles (non-motorised)",
+    dutyGeneral: "11%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "87 - 车辆及其零件（铁道除外）",
+    note: "自行车整车归入8712，零件归入8714。"
+  },
+  {
+    name: "帐篷",
+    aliases: ["camping tent", "户外帐篷"],
+    hsCode: "6306.22.00.00",
+    parentCode: "6306.22.00",
+    desc: "合成纤维制帐篷",
+    descEn: "Tents of synthetic fibres",
+    dutyGeneral: "6.8%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "63 - 其他纺织制成品",
+    note: "棉制帐篷归入6306.21。"
+  },
+  // ===== 文具办公类 =====
+  {
+    name: "笔记本",
+    aliases: ["记事本", "notebook", "notepad"],
+    hsCode: "4820.10.00.00",
+    parentCode: "4820.10.00",
+    desc: "登记本、账本、笔记本、记事本等",
+    descEn: "Registers, account books, notebooks, order books, receipt books",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "48 - 纸及纸板；纸浆、纸或纸板制品",
+    note: "纸质笔记本一般税率为Free。"
+  },
+  {
+    name: "圆珠笔",
+    aliases: ["签字笔", "中性笔", "ballpoint pen"],
+    hsCode: "9608.10.00.00",
+    parentCode: "9608.10.00",
+    desc: "圆珠笔",
+    descEn: "Ball point pens",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "20%",
+    unit: "No. and kg",
+    chapter: "96 - 杂项制品",
+    note: "笔类一般税率为Free。"
+  },
+  {
+    name: "打印纸",
+    aliases: ["A4纸", "复印纸", "copy paper", "printing paper"],
+    hsCode: "4802.56.00.00",
+    parentCode: "4802.56.00",
+    desc: "其他书写/印刷用纸（未涂布），40-150g/m²，成卷或成张",
+    descEn: "Other writing/printing paper, uncoated, 40-150 g/m², in rolls or sheets",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "48 - 纸及纸板；纸浆、纸或纸板制品",
+    note: "A4复印纸一般税率为Free。"
+  },
+  // ===== 汽车配件类 =====
+  {
+    name: "汽车脚垫",
+    aliases: ["车用地垫", "car floor mat"],
+    hsCode: "5703.31.00.00",
+    parentCode: "5703.31.00",
+    desc: "其他纺织材料制簇绒地毯及铺地制品",
+    descEn: "Other tufted carpet and other textile floor coverings, of man-made textile materials",
+    dutyGeneral: "5.8%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "35%",
+    unit: "No. and sq. m.",
+    chapter: "57 - 地毯及纺织材料的其他铺地制品",
+    note: "橡胶脚垫归入4016.99，塑料脚垫归入3918.10。"
+  },
+  {
+    name: "汽车座套",
+    aliases: ["座椅套", "car seat cover"],
+    hsCode: "8708.99.81.00",
+    parentCode: "8708.99.81",
+    desc: "机动车辆的其他零件及附件",
+    descEn: "Other parts and accessories for motor vehicles",
+    dutyGeneral: "2.5%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "25%",
+    unit: "No. and kg",
+    chapter: "87 - 车辆及其零件（铁道除外）",
+    note: "汽车专用座套归入8708（汽车配件），非通用座套。"
+  },
+  // ===== 五金工具类 =====
+  {
+    name: "螺丝刀",
+    aliases: ["螺丝批", "screwdriver"],
+    hsCode: "8205.40.00.00",
+    parentCode: "8205.40.00",
+    desc: "螺丝刀",
+    descEn: "Screwdrivers",
+    dutyGeneral: "5.7%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "82 - 贱金属工具、器具、利口器等",
+    note: "手动螺丝刀归入8205.40。电动螺丝刀归入8467。"
+  },
+  {
+    name: "扳手",
+    aliases: ["扳子", "wrench", "spanner"],
+    hsCode: "8204.12.00.00",
+    parentCode: "8204.12.00",
+    desc: "其他扳手及扳钳（可调节）",
+    descEn: "Other spanners and wrenches, adjustable",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "82 - 贱金属工具、器具、利口器等",
+    note: "手动扳手一般税率为Free。"
+  },
+  // ===== 更多服装配饰类 =====
+  {
+    name: "帽子",
+    aliases: ["棒球帽", "cap", "hat"],
+    hsCode: "6505.00.15.00",
+    parentCode: "6505.00.15",
+    desc: "其他帽类（针织或钩编）",
+    descEn: "Other hats and other headgear, knitted or crocheted",
+    dutyGeneral: "19.75 ¢/kg + 14.6%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "65 - 帽类及其零件",
+    note: "帽类税率较高且计算复杂，按材质和织法不同有差异。"
+  },
+  {
+    name: "围巾",
+    aliases: ["披肩", "scarf", "shawl"],
+    hsCode: "6117.10.20.00",
+    parentCode: "6117.10.20",
+    desc: "棉制针织或钩编的披巾、头巾、围巾等",
+    descEn: "Shawls, scarves, mufflers, mufflers and the like, of cotton, knitted or crocheted",
+    dutyGeneral: "11.7%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "61 - 针织或钩编的服装及衣着附件",
+    note: "化纤围巾归入6117.10.60，梭织围巾归入6214。"
+  },
+  {
+    name: "手套",
+    aliases: ["防寒手套", "gloves"],
+    hsCode: "6116.10.48.00",
+    parentCode: "6116.10.48",
+    desc: "其他手套，浸渍或涂布塑料或橡胶（针织）",
+    descEn: "Other gloves, impregnated/coated with plastics or rubber, knitted",
+    dutyGeneral: "10.7%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "35%",
+    unit: "No. and pairs",
+    chapter: "61 - 针织或钩编的服装及衣着附件",
+    note: "手套归类按材质和用途细分，运动手套、劳保手套编码不同。"
+  },
+  {
+    name: "袜子",
+    aliases: ["棉袜", "socks"],
+    hsCode: "6115.95.00.00",
+    parentCode: "6115.95.00",
+    desc: "棉制其他袜类（针织或钩编）",
+    descEn: "Other socks and stock, of cotton, knitted or crocheted",
+    dutyGeneral: "16.2%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "35%",
+    unit: "No. and dz. pairs",
+    chapter: "61 - 针织或钩编的服装及衣着附件",
+    note: "化纤袜归入6115.94。"
+  },
+  // ===== 更多化妆品/个护类 =====
+  {
+    name: "洗发水",
+    aliases: ["洗发露", "shampoo"],
+    hsCode: "3305.10.00.00",
+    parentCode: "3305.10.00",
+    desc: "洗发剂（香波）",
+    descEn: "Shampoos",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "20%",
+    unit: "No. and kg",
+    chapter: "33 - 精油及香膏；芳香料制品及化妆盥洗品",
+    note: "洗发剂一般税率为Free。"
+  },
+  {
+    name: "牙膏",
+    aliases: ["toothpaste"],
+    hsCode: "3306.10.00.00",
+    parentCode: "3306.10.00",
+    desc: "洁齿品（牙膏）",
+    descEn: "Toothpaste",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "20%",
+    unit: "No. and kg",
+    chapter: "33 - 精油及香膏；芳香料制品及化妆盥洗品",
+    note: "牙膏一般税率为Free。"
+  },
+  {
+    name: "香水",
+    aliases: ["perfume", "fragrance"],
+    hsCode: "3303.00.30.00",
+    parentCode: "3303.00.30",
+    desc: "香水及花露水",
+    descEn: "Perfumes and eau de cologne",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "20%",
+    unit: "No. and kg",
+    chapter: "33 - 精油及香膏；芳香料制品及化妆盥洗品",
+    note: "香水一般税率为Free。"
+  },
+  // ===== 家居装饰类 =====
+  {
+    name: "相框",
+    aliases: ["画框", "photo frame", "picture frame"],
+    hsCode: "8306.29.00.00",
+    parentCode: "8306.29.00",
+    desc: "其他贱金属制小雕像及其他装饰品",
+    descEn: "Other statuettes and other ornaments, of base metal",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "83 - 贱金属杂项制品",
+    note: "塑料相框归入3926.90，木质相框归入4420.10。"
+  },
+  {
+    name: "花瓶",
+    aliases: ["vase"],
+    hsCode: "7013.28.00.00",
+    parentCode: "7013.28.00",
+    desc: "铅晶玻璃制其他玻璃器皿（餐桌/厨房/装饰用）",
+    descEn: "Other glassware of lead crystal, for table, kitchen, toilet or office use, indoor decoration",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "70 - 玻璃及其制品",
+    note: "普通玻璃花瓶归入7013.49，陶瓷花瓶归入6913。"
+  },
+  {
+    name: "蜡烛",
+    aliases: ["candle"],
+    hsCode: "3406.00.00.00",
+    parentCode: "3406.00.00",
+    desc: "蜡烛、烛芯及类似品",
+    descEn: "Candles, tapers and the like",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "20%",
+    unit: "No. and kg",
+    chapter: "34 - 肥皂、有机表面活性剂、润滑剂等",
+    note: "蜡烛一般税率为Free。"
+  },
+  // ===== 更多电子/数码类 =====
+  {
+    name: "U盘",
+    aliases: ["闪存盘", "USB drive", "flash drive", "thumb drive"],
+    hsCode: "8523.51.00.00",
+    parentCode: "8523.51.00",
+    desc: "固态非易失性数据存储器件（闪存）",
+    descEn: "Solid-state non-volatile storage devices (flash memory)",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "85 - 电机、电气设备及其零件",
+    note: "U盘/闪存盘一般税率为Free。"
+  },
+  {
+    name: "移动硬盘",
+    aliases: ["external hard drive", "外置硬盘"],
+    hsCode: "8471.70.60.00",
+    parentCode: "8471.70.60",
+    desc: "其他存储部件（硬盘驱动器）",
+    descEn: "Other storage units (hard disk drives)",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "84 - 核反应堆、锅炉、机器、机械器具及其零件",
+    note: "移动硬盘一般税率为Free。"
+  },
+  {
+    name: "摄像头",
+    aliases: ["webcam", "网络摄像头"],
+    hsCode: "8525.89.00.00",
+    parentCode: "8525.89.00",
+    desc: "其他视频摄像头",
+    descEn: "Other video camera recorders",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "85 - 电机、电气设备及其零件",
+    note: "网络摄像头一般税率为Free。"
+  },
+  {
+    name: "路由器",
+    aliases: ["无线路由", "wifi router"],
+    hsCode: "8517.62.00.90",
+    parentCode: "8517.62.00",
+    desc: "其他接收、转换和发送数据的设备",
+    descEn: "Other machines for the reception, conversion and transmission of data",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "85 - 电机、电气设备及其零件",
+    note: "网络路由器一般税率为Free。"
+  },
+  {
+    name: "显示器",
+    aliases: ["电脑显示器", "monitor"],
+    hsCode: "8528.52.00.00",
+    parentCode: "8528.52.00",
+    desc: "其他显示器（可直接连接ADP设备）",
+    descEn: "Other monitors, capable of directly connecting to an ADP machine",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "85 - 电机、电气设备及其零件",
+    note: "电脑显示器一般税率为Free。"
+  },
+  // ===== 医疗器械类 =====
+  {
+    name: "口罩",
+    aliases: ["医用口罩", "face mask", "surgical mask"],
+    hsCode: "6307.90.98.00",
+    parentCode: "6307.90.98",
+    desc: "其他纺织制成品（含口罩）",
+    descEn: "Other made up textile articles (including face masks)",
+    dutyGeneral: "7%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "63 - 其他纺织制成品",
+    note: "医用外科口罩归入6307.90。N95等防护口罩可能归入其他编码。"
+  },
+  {
+    name: "创可贴",
+    aliases: ["创口贴", "bandage", "adhesive bandage"],
+    hsCode: "3005.10.50.00",
+    parentCode: "3005.10.50",
+    desc: "其他胶粘敷料及有胶粘涂层的物品（急救用品）",
+    descEn: "Other adhesive dressings and other articles having an adhesive coating",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "20%",
+    unit: "No. and kg",
+    chapter: "30 - 药品",
+    note: "创可贴/急救敷料一般税率为Free。"
+  },
+  {
+    name: "体温计",
+    aliases: ["温度计", "thermometer"],
+    hsCode: "9025.19.40.00",
+    parentCode: "9025.19.40",
+    desc: "其他体温计（非液体填充、可直接读数）",
+    descEn: "Other thermometers and pyrometers, not combined with other instruments",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "90 - 光学、照相、精密仪器及器具",
+    note: "电子体温计归入9025.19。一般税率为Free。"
+  },
+  // ===== 食品相关类 =====
+  {
+    name: "茶叶",
+    aliases: ["绿茶", "红茶", "tea"],
+    hsCode: "0902.30.00.00",
+    parentCode: "0902.30.00",
+    desc: "其他半发酵茶及全发酵茶（红茶等）",
+    descEn: "Other partly or fully fermented tea (black tea etc.)",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "09 - 咖啡、茶、马黛茶及调味香料",
+    note: "绿茶（未发酵）归入0902.10，红茶归入0902.30。一般税率为Free。"
+  },
+  {
+    name: "巧克力",
+    aliases: ["chocolate"],
+    hsCode: "1806.90.05.00",
+    parentCode: "1806.90.05",
+    desc: "其他巧克力制品（块状/条状，含可可）",
+    descEn: "Other chocolate preparations, in blocks, slabs or bars",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "18 - 可可及可可制品",
+    note: "巧克力制品一般税率为Free。"
+  },
+  // ===== 家具类 =====
+  {
+    name: "办公椅",
+    aliases: ["电脑椅", "办公座椅", "office chair"],
+    hsCode: "9401.30.00.00",
+    parentCode: "9401.30.00",
+    desc: "可调高度的转动座椅",
+    descEn: "Swivel seats with variable height adjustment",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "94 - 家具、寝具、褥垫等",
+    note: "办公椅一般税率为Free。"
+  },
+  {
+    name: "办公桌",
+    aliases: ["电脑桌", "office desk"],
+    hsCode: "9403.20.00.00",
+    parentCode: "9403.20.00",
+    desc: "其他金属制家具",
+    descEn: "Other metal furniture",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "94 - 家具、寝具、褥垫等",
+    note: "金属制办公桌一般税率为Free。木制办公桌归入9403.30或9403.60。"
+  },
+  {
+    name: "床垫",
+    aliases: ["mattress"],
+    hsCode: "9404.21.00.00",
+    parentCode: "9404.21.00",
+    desc: "海绵橡胶或泡沫塑料制床垫（不论是否装有弹簧）",
+    descEn: "Mattresses of cellular rubber or plastics, whether or not containing springs",
+    dutyGeneral: "3%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "94 - 家具、寝具、褥垫等",
+    note: "弹簧床垫归入9404.29。"
+  },
+  // ===== 珠宝饰品类 =====
+  {
+    name: "项链",
+    aliases: ["手链", "necklace", "bracelet"],
+    hsCode: "7117.19.00.00",
+    parentCode: "7117.19.00",
+    desc: "其他贱金属制仿首饰（非贵金属）",
+    descEn: "Other imitation jewellery, of base metal",
+    dutyGeneral: "11%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "71 - 天然或养殖珍珠、宝石或贵金属",
+    note: "贵金属（金/银/铂）制首饰归入7113。仿首饰归入7117。"
+  },
+  // ===== 更多日用消费品 =====
+  {
+    name: "雨伞",
+    aliases: ["阳伞", "umbrella", "parasol"],
+    hsCode: "6601.91.00.00",
+    parentCode: "6601.91.00",
+    desc: "其他伞类（ telescopic / folding）",
+    descEn: "Other umbrellas, telescopic",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "20%",
+    unit: "No. and kg",
+    chapter: "66 - 伞、手杖、鞭子及其零件",
+    note: "折叠伞归入6601.91，直杆伞归入6601.99。一般税率为Free。"
+  },
+  {
+    name: "拉链",
+    aliases: ["zipper"],
+    hsCode: "9607.11.00.00",
+    parentCode: "9607.11.00",
+    desc: "装有贱金属齿的拉链",
+    descEn: "Slide fasteners with scoops of base metal",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "20%",
+    unit: "No. and kg",
+    chapter: "96 - 杂项制品",
+    note: "拉链一般税率为Free。"
+  },
+  {
+    name: "纽扣",
+    aliases: ["button"],
+    hsCode: "9606.21.00.00",
+    parentCode: "9606.21.00",
+    desc: "塑料制纽扣（未经包覆）",
+    descEn: "Buttons of plastics, not covered with textile material",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "20%",
+    unit: "No. and kg",
+    chapter: "96 - 杂项制品",
+    note: "塑料纽扣一般税率为Free。金属纽扣归入9606.29。"
+  },
+  {
+    name: "打火机",
+    aliases: ["lighter"],
+    hsCode: "9613.20.00.00",
+    parentCode: "9613.20.00",
+    desc: "口袋式气体打火机（可充气）",
+    descEn: "Pocket gas lighters, non-refillable",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "96 - 杂项制品",
+    note: "打火机一般税率为Free。注意：部分州有特殊进口限制。"
+  },
+  {
+    name: "行李箱",
+    aliases: ["拉杆箱", "luggage", "suitcase"],
+    hsCode: "4202.12.80.00",
+    parentCode: "4202.12.80",
+    desc: "其他衣箱、提箱等（外表面为纺织材料）",
+    descEn: "Other trunks, suit-cases, with outer surface of textile materials",
+    dutyGeneral: "17.6%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "42 - 皮革制品；旅行用品、手提包",
+    note: "行李箱归类取决于外表面材质：塑料面归入4202.12.20，皮革面归入4202.11。"
+  },
+  {
+    name: "钱包",
+    aliases: ["皮夹", "wallet", "purse"],
+    hsCode: "4202.31.00.00",
+    parentCode: "4202.31.00",
+    desc: "皮革或再生皮革制钱包等（口袋或手提包用）",
+    descEn: "Articles of a kind normally carried in the pocket or handbag, with outer surface of leather",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "42 - 皮革制品；旅行用品、手提包",
+    note: "皮革制钱包一般税率为Free。塑料制钱包归入4202.32。"
+  },
+  // ===== 工业/包装类 =====
+  {
+    name: "纸箱",
+    aliases: ["瓦楞纸箱", "carton", "corrugated box"],
+    hsCode: "4819.10.00.00",
+    parentCode: "4819.10.00",
+    desc: "瓦楞纸或纸板制的箱、盒、匣",
+    descEn: "Cartons, boxes and cases, of corrugated paper or paperboard",
+    dutyGeneral: "Free",
+    dutySpecial: "Free",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "48 - 纸及纸板；纸浆、纸或纸板制品",
+    note: "瓦楞纸箱一般税率为Free。"
+  },
+  {
+    name: "塑料袋",
+    aliases: ["包装袋", "plastic bag"],
+    hsCode: "3923.21.00.00",
+    parentCode: "3923.21.00",
+    desc: "聚合物制袋及包（包括锥形袋）",
+    descEn: "Sacks and bags (including cones) of polymers of ethylene",
+    dutyGeneral: "3%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "39 - 塑料及其制品",
+    note: "聚乙烯袋归入3923.21，其他塑料袋归入3923.29。"
+  },
+  {
+    name: "胶带",
+    aliases: ["封箱胶带", "packing tape", "adhesive tape"],
+    hsCode: "3919.10.20.00",
+    parentCode: "3919.10.20",
+    desc: "其他自粘塑料板/片/膜/箔/带/条（宽度≤20mm）",
+    descEn: "Other self-adhesive plates/sheets/film/foil/tape/strips of plastics, width ≤ 20mm",
+    dutyGeneral: "5.8%",
+    dutySpecial: "Free (FTA国家)",
+    dutyColumn2: "35%",
+    unit: "No. and kg",
+    chapter: "39 - 塑料及其制品",
+    note: "宽度>20mm的胶带归入3919.90。"
+  }
+];
+
+// 搜索功能
+function search(query) {
+  query = query.trim().toLowerCase();
+  if (!query) {
+    document.getElementById('results').innerHTML = '';
+    document.getElementById('clearBtn').style.display = 'none';
+    return;
+  }
+  document.getElementById('clearBtn').style.display = 'block';
+
+  const results = products.filter(p => {
+    const searchStr = [p.name, ...(p.aliases || [])].join(' ').toLowerCase();
+    return searchStr.includes(query) || p.hsCode.includes(query);
+  });
+
+  if (results.length === 0) {
+    document.getElementById('results').innerHTML = `
+      <div class="no-result">
+        <div class="emoji">🤔</div>
+        <p>未找到匹配结果<br>
+        试试其他关键词，或前往 <a href="https://hts.usitc.gov/" target="_blank">hts.usitc.gov</a> 官方查询</p>
+      </div>
+    `;
+    return;
+  }
+
+  document.getElementById('results').innerHTML = results.map((p, i) => `
+    <div class="result-item" onclick="showDetail(${products.indexOf(p)})">
+      <div class="product-name">${p.name} ${p.aliases ? p.aliases.slice(0,2).map(a => `<span class="tag">${a}</span>`).join('') : ''}</div>
+      <div class="hs-code">${formatCode(p.hsCode)}</div>
+      <div class="desc">${p.desc}</div>
+      <span class="duty ${p.dutyGeneral === 'Free' ? 'free' : ''}">一般税率: ${p.dutyGeneral}</span>
+    </div>
+  `).join('');
+}
+
+function formatCode(code) {
+  return code.replace(/\./g, '<span class="dot">.</span>');
+}
+
+function showDetail(index) {
+  const p = products[index];
+  const modal = document.getElementById('detailModal');
+  const content = document.getElementById('detailContent');
+
+  content.innerHTML = `
+    <button class="close-btn" onclick="closeModal(event, true)">✕</button>
+    <h2>${p.name}</h2>
+    <div style="color:#888;font-size:13px;margin-bottom:8px;">${p.descEn || ''}</div>
+    <div class="code-big">${p.hsCode}</div>
+    <table>
+      <tr><th>章节</th><td>${p.chapter}</td></tr>
+      <tr><th>商品描述</th><td>${p.desc}</td></tr>
+      <tr><th>一般税率</th><td style="font-weight:600;color:#2e7d32;">${p.dutyGeneral}</td></tr>
+      <tr><th>优惠税率</th><td>${p.dutySpecial}</td></tr>
+      <tr><th>第二栏税率</th><td>${p.dutyColumn2}</td></tr>
+      <tr><th>计量单位</th><td>${p.unit}</td></tr>
+    </table>
+    ${p.note ? `<div class="note">💡 ${p.note}</div>` : ''}
+    <div style="margin-top:16px;text-align:center;">
+      <a href="https://hts.usitc.gov/" target="_blank" style="color:#4361ee;font-size:13px;text-decoration:none;">
+        前往 hts.usitc.gov 验证 →
+      </a>
+    </div>
+  `;
+
+  modal.classList.add('active');
+}
+
+function closeModal(event, force) {
+  if (force || event.target === document.getElementById('detailModal')) {
+    document.getElementById('detailModal').classList.remove('active');
+  }
+}
+
+function quickSearch(term) {
+  document.getElementById('searchInput').value = term;
+  search(term);
+}
+
+function clearSearch() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('results').innerHTML = '';
+  document.getElementById('clearBtn').style.display = 'none';
+}
+
+// 输入监听
+document.getElementById('searchInput').addEventListener('input', function(e) {
+  search(e.target.value);
+});
+
+// 回车键
+document.getElementById('searchInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    search(e.target.value);
+  }
+});
+</script>
+
+</body>
+</html>
